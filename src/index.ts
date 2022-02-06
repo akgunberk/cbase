@@ -5,6 +5,10 @@ import path from "path";
 import { Command } from "commander";
 import chalk from "chalk";
 
+import "./commands/log";
+import "./commands/get";
+import "./commands/set";
+
 export const program = new Command();
 
 const paths = {
