@@ -1,6 +1,6 @@
 {
-  "name": "cbase",
-  "version": "1.0.1",
+  "name": "@akgunberk/cbase",
+  "version": "1.0.2",
   "description": "Bring codabasehq into your terminal",
   "keywords": [
     "cli",
