@@ -11,41 +11,59 @@ datasource db {
 }
 
 model User {
-  id              Int             @id @default(autoincrement())
-  username        String          @unique
-  project         Project         @relation(fields: [selectedProject], references: [name])
-  selectedProject String
-  queries         CodebaseQuery[]
-  isActive        Boolean         @default(false)
+  @@id([id,username])
+  id        String            @unique
+  username  String            @unique
+  firstName String
+  lastName  String
+  project   UsersOnProjects[]
+  queries   CodebaseQuery[]
 }
 
 model Project {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  User User[]
+  id         Int               @id @default(autoincrement())
+  name       String            @unique
+  users      UsersOnProjects[]
+  tickets    Ticket[]
+  statuses   Status[]
+  priorities Priority[]
+  categories Category[]
+  types      Type[]
+}
+
+model UsersOnProjects {
+  project     Project @relation(fields: [projectName], references: [name])
+  projectName String
+  user        User    @relation(fields: [userId,username], references: [id,username])
+  userId      String
+  username    String
+
+  @@id([projectName, userId])
 }
 
 model CodebaseQuery {
-  id     Int    @id @default(autoincrement())
-  name   String @unique
-  query  String
-  user   User   @relation(fields: [userId], references: [id])
-  userId Int
+  id       Int    @id @default(autoincrement())
+  name     String @unique
+  query    String
+  user     User   @relation(fields: [username], references: [username])
+  username String
 }
 
 model Ticket {
-  ticketId   String   @id
-  summary    String
-  ticketType String
-  assignee   String
-  reporter   String
-  categoryId String
-  statusId   String
-  priorityId String
-  type       Type     @relation(fields: [ticketType], references: [name])
-  category   Category @relation(fields: [categoryId], references: [id])
-  status     Status   @relation(fields: [statusId], references: [id])
-  priority   Priority @relation(fields: [priorityId], references: [id])
+  ticketId    String   @id
+  summary     String
+  ticketType  String
+  assignee    String
+  reporter    String
+  categoryId  String
+  statusId    String
+  priorityId  String
+  projectName String
+  project     Project  @relation(fields: [projectName], references: [name])
+  type        Type     @relation(fields: [ticketType], references: [name])
+  category    Category @relation(fields: [categoryId], references: [id])
+  status      Status   @relation(fields: [statusId], references: [id])
+  priority    Priority @relation(fields: [priorityId], references: [id])
 }
 
 model Status {
@@ -54,24 +72,32 @@ model Status {
   colour        String
   treatAsClosed Boolean
   Ticket        Ticket[]
+  projectName   String
+  project       Project  @relation(fields: [projectName], references: [name])
 }
 
 model Category {
-  id     String   @id
-  name   String
-  Ticket Ticket[]
+  id          String   @id
+  name        String   @unique
+  Ticket      Ticket[]
+  projectName String
+  project     Project  @relation(fields: [projectName], references: [name])
 }
 
 model Type {
-  id     String   @id
-  name   String   @unique
-  icon   String
-  Ticket Ticket[]
+  id          String   @id
+  name        String   @unique
+  icon        String
+  Ticket      Ticket[]
+  projectName String
+  project     Project  @relation(fields: [projectName], references: [name])
 }
 
 model Priority {
-  id     String   @id
-  name   String
-  colour String
-  Ticket Ticket[]
+  id          String   @id
+  name        String   @unique
+  colour      String
+  Ticket      Ticket[]
+  projectName String
+  project     Project  @relation(fields: [projectName], references: [name])
 }

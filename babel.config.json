@@ -1,20 +1,3 @@
 {
-  "presets": [
-    ["@babel/preset-env", { "targets": { "node": "current" } }],
-    "@babel/preset-typescript"
-  ],
-  "plugins": [
-    [
-      "module-resolver",
-      {
-        "alias": {
-          "@api": ["./lib/api"],
-          "@api/*": ["./lib/api/*"],
-          "@hooks": ["./lib/hooks"],
-          "@prompts": ["./lib/prompts"],
-          "@utils": ["./lib/utils"]
-        }
-      }
-    ]
-  ]
+  "presets": [["@babel/preset-env", { "targets": { "node": "current" } }], "@babel/preset-typescript"]
 }
