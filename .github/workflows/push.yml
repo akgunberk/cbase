@@ -1,4 +1,4 @@
-name: publish package
+name: publish package to npmjs
 
 on: push
 
@@ -12,8 +12,6 @@ jobs:
           node-version: 12
       - run: npm ci
       - run: npm run build
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
 
   publish:
     needs: build
