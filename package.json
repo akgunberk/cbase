@@ -1,6 +1,6 @@
 {
   "name": "cbase",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Bring codabasehq into your terminal",
   "keywords": [
     "cli",
@@ -20,7 +20,7 @@
   "scripts": {
     "test": "jest --watch",
     "type-check": "tsc --noEmit",
-    "postinstall": "npm run prisma",
+    "postinstall": "npx run prisma",
     "prisma": "npx prisma migrate dev --name initial-migration",
     "dev": "nodemon --watch src -e ts --exec \"npm run build\"",
     "build1": "tsc && babel src --out-dir lib --extensions \".ts,.js,.json\"",
