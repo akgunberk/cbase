@@ -1,6 +1,6 @@
 {
   "name": "cbase",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Bring codabasehq into your terminal",
   "keywords": [
     "cli",
@@ -23,7 +23,7 @@
     "prisma": "npx prisma migrate dev --name initial-migration",
     "watch": "parcel watch",
     "build": "parcel build",
-    "prepublish": "npm run build"
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/inquirer": "^8.1.3",
