@@ -15,7 +15,10 @@
     "cbase": "lib/index.js"
   },
   "publishConfig": {
-    "@YOUR-USERNAME:registry": "https://npm.pkg.github.com"
+    "@akgunberk:registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">= 12"
   },
   "scripts": {
     "test": "jest --watch",
