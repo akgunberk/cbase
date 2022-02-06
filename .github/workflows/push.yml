@@ -33,9 +33,8 @@ jobs:
         with:
           node-version: 12
           registry-url: "https://npm.pkg.github.com"
-          scope: "@lukesrw"
-      - run: npm install
+          scope: "@akgunberk"
       - run: echo "registry=https://npm.pkg.github.com/@akgunberk" >> .npmrc
-      - run: npm publish
+      - run: npm publish $(ls *.tgz)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
