@@ -25,9 +25,9 @@
     "type-check": "tsc --noEmit",
     "prisma": "prisma migrate dev --name initial-migration",
     "watch": "parcel watch",
-    "build": "parcel build src/cli.ts --dist-dir dist --no-source-maps",
-    "prepack": "npm run build && npm run prisma",
-    "prepublishOnly": "npm run build"
+    "build": "parcel build",
+    "postbuild": "npm run prisma",
+    "prepack": "npm run build"
   },
   "devDependencies": {
     "@parcel/compressor-brotli": "^2.2.1",
