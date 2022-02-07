@@ -18,6 +18,7 @@ jobs:
         with:
           name: package
           path: "*.tgz"
-      - run: npm publish $(ls *.tgz)
+      - shell: bash
+        run: npm publish $(ls *.tgz)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
