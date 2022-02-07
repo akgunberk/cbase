@@ -14,11 +14,7 @@ jobs:
       - run: npm ci
       - run: npm version prerelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version
       - run: npm pack
-      - uses: actions/upload-artifact@v2
-        with:
-          name: package
-          path: "*.tgz"
       - shell: bash
-        run: npm publish $(ls *.tgz)
+        run: npm publish < ls *.tgz
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
