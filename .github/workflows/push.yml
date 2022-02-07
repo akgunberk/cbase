@@ -3,18 +3,35 @@ name: publish npmjs
 on: push
 
 jobs:
-  build-publish:
+  package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: 12
-          registry-url: "https://registry.npmjs.org"
       - run: npm ci
       - run: npm version prerelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version
       - run: npm pack
-      - shell: bash
-        run: npm publish < ls *.tgz
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: package
+          path: "*.tgz"
+
+  publish:
+    name: "Publish to npmjs"
+    needs: [package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload
+        uses: actions/download-artifact@v2
+        with:
+          name: package
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 12
+          registry-url: "https://registry.npmjs.org"
+      - run: npm publish $(ls *.tgz)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
