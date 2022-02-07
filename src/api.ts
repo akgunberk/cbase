@@ -82,8 +82,9 @@ export async function getUsers({ project, ...auth }: GetIinitialProjectDetailsPa
 }
 
 export async function getTicketUpdates(id: string) {
+  const { project, ...auth } = getCredentialsFromEnv();
   try {
-    const res = await API.get(`/${process.env.project}/tickets/${id}/notes`);
+    const res = await API.get(`/${project}/tickets/${id}/notes`, { auth });
     return makeArray(res.data["ticket-notes"]["ticket-note"]);
   } catch (error: any) {
     spinner.fail("An error occurred getting your ticket updates");

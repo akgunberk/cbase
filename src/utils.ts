@@ -1,3 +1,4 @@
+import { homedir } from "os";
 import { format } from "util";
 import { writeFileSync } from "fs";
 import dotenv from "dotenv";
@@ -10,15 +11,18 @@ import { Ticket } from "@prisma/client";
 import { TICKET_CONTENT, TICKET_TABLE_HEADERS, TICKET_UPDATE_CONTENT, TTY_WIDTH } from "./constants";
 import { Transform } from "stream";
 import { Console } from "console";
+import { join } from "path";
 
 export const spinner = ora();
+
+export const configPath = join(homedir(), ".cbase.env");
 
 /* ENV  */
 
 export function saveCredentialsToEnv(answers: { project?: string } & Auth) {
   try {
     writeFileSync(
-      ".env",
+      configPath,
       Object.entries<string>(answers)
         .map((answer) => answer.join("="))
         .join("\n")
@@ -30,7 +34,7 @@ export function saveCredentialsToEnv(answers: { project?: string } & Auth) {
 }
 
 export function getCredentialsFromEnv() {
-  const { username, password, project } = dotenv.config().parsed || {};
+  const { username, password, project } = dotenv.config({ path: configPath }).parsed || {};
 
   if (username && password) {
     return { username, password, project };
@@ -245,4 +249,12 @@ export function displayTabularData(cells: string[], header: string, column = 6) 
       return row;
     })
     .join("\n");
+}
+
+export function authGuard() {
+  const { username, password } = getCredentialsFromEnv();
+  if (username && password) {
+    return;
+  }
+  spinner.fail();
 }

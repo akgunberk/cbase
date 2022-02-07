@@ -3,3 +3,8 @@ src
 .env
 
 .github
+
+node_modules
+
+tsconfig.json
+.gitignore

@@ -4,4 +4,8 @@ node_modules
 
 .parcel-cache
 
-lib
+dist
+
+.DS_Store
+
+prisma/migrations

@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 import pkg from "../package.json";
 
+import { config } from "dotenv";
 import { Command } from "commander";
 import chalk from "chalk";
 import {
+  authGuard,
+  configPath,
   displayTicketListTable,
   displayTicketTimeline,
   generateQueryString,
   generateUpdateTicketPayload,
+  getCredentialsFromEnv,
   spinner,
 } from "./utils";
 import { unlinkSync } from "fs";
 import { PROMPTS } from "./prompts";
 import { getTicketDetailsWithQuery, updateTicket } from "./api";
 import { HELP_TEXTS } from "./constants";
+
+config({ path: configPath });
 
 export const program = new Command();
 
@@ -34,11 +40,11 @@ log
   .command("out")
   .description("logout your current user")
   .action(() => {
-    const user = process.env.username;
+    const { username: user } = getCredentialsFromEnv();
 
     if (user) {
       try {
-        unlinkSync(".env");
+        unlinkSync(configPath);
       } catch (error) {
         spinner.fail("Could not delete env credentials");
       }
@@ -61,6 +67,7 @@ get
   .option("-u, --updates <number>", "Display last <number> ticket updates (works only with given ticket-id)", "3")
   .option("-S, --sort <type>", "Sort ticket by <type>", "priority")
   .addHelpText("after", HELP_TEXTS.get)
+  .hook("preAction", authGuard)
   .action(async (ticketId, { updates, head, ...queries }: Record<string, string>) => {
     const finalQuery = ticketId ? `id:${ticketId}` : generateQueryString(queries);
     const tickets = await getTicketDetailsWithQuery(finalQuery);
@@ -87,6 +94,7 @@ set
   .option("-T, --tag <tag>", "Add ticket tag")
   .option("-P, --private-update", "Make updates private")
   .option("-i, --interactive", "Update ticket interactively in a more concise way")
+  .hook("preAction", authGuard)
   .action(async (id, { notes, interactive, ...options }) => {
     const updatedFields = interactive ? await PROMPTS.INTERACTIVE_UPDATE() : options;
     const payload = await generateUpdateTicketPayload(updatedFields);
