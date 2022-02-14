@@ -12,7 +12,7 @@ jobs:
           node-version: 12
       - run: npm ci
       - name: Package versioning
-        run: echo '::set-output name=PKG_VERSION::npm version prerelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version'
+        run: echo '::set-output name=PKG_VERSION::$(npm version prerelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version)'
         id: package-version
       - name: Get version
         run: echo "The package version is ${{ steps.package-version.outputs.PKG_VERSION }}"
