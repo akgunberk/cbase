@@ -3,7 +3,7 @@ name: publish npmjs and gh pages
 on: push
 
 jobs:
-  npm:
+  package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
