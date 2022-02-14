@@ -10,9 +10,11 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: 12
+          registry-url: "https://registry.npmjs.org"
       - run: npm ci
       - name: Package versioning
         run: echo '::set-output name=PKG_VERSION::$(npm version prerelease --preid=ci-$GITHUB_RUN_ID --no-git-tag-version)'
         id: package-version
-      - name: Get version
-        run: echo "The package version is ${{ steps.package-version.outputs.PKG_VERSION }}"
+      - run: npm publish ${{ steps.package-version.outputs.PKG_VERSION }}.tgz
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
