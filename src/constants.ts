@@ -43,7 +43,7 @@ export const QUERIES = {
 
 /* UI */
 
-export const TICKET_TABLE_HEADERS = ["id", "type", "status", "priority", "status", "summary"];
+export const TICKET_TABLE_HEADERS = ["id", "type", "status", "priority", "status", "summary", "assignee"];
 
 export const TTY_WIDTH = process.stdout.columns - 4;
 
@@ -56,6 +56,7 @@ export const TICKET_CONTENT = [
   "category-id",
   "status-id",
   "summary",
+  "assignee",
 ];
 
 export const TICKET_UPDATE_CONTENT = ["content", "updated-at", "user-id", "updates"];

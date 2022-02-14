@@ -1,172 +1,98 @@
-import { Prisma, PrismaClient } from "@prisma/client";
-import { pickXmlContent, spinner } from "./utils";
+import { Database } from "sqlite3";
+import { join } from "path";
+import { promisify } from "util";
+import { readFileSync } from "fs";
 
-export const prisma = new PrismaClient({ log: [] });
+import type { UserType, CategoryType, StatusType, PriorityType, TicketType } from "./api";
 
-export async function upsertUser(user: Prisma.UserCreateInput) {
-  return prisma.user.upsert({
-    where: { id: user.id },
-    update: { project: { connect: { projectName_userId: { projectName: process.env.project!, userId: user.id } } } },
-    create: {
-      ...user,
-      project: { connect: { projectName_userId: { projectName: process.env.project!, userId: user.id } } },
-    },
-  });
-}
+const db = new Database(join(__dirname, "database.db"));
 
-export async function listProjectUsers() {
-  return prisma.project.findUnique({
-    where: { name: process.env.project },
-    include: { users: true },
-  });
-}
-
-export async function setProjectDetails([types, statuses, categories, priorities, users]: any) {
-  const projectName = process.env.project!;
-
-  try {
-    for (const user of users) {
-      const { id, username, firstName, lastName } = pickXmlContent(user, [
-        "id",
-        "username",
-        "first-name",
-        "last-name",
-      ]) as Prisma.UserCreateInput;
-
-      await prisma.user.upsert({
-        where: { id },
-        update: {},
-        create: {
-          id,
-          username,
-          firstName,
-          lastName,
-          project: {
-            connectOrCreate: {
-              where: { projectName_userId: { projectName, userId: id } },
-              create: { projectName },
-            },
-          },
-        },
+const sqlite = {
+  run(sql: string, ...params: any[]) {
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function (err) {
+        if (err) reject(err);
+        else resolve(this);
       });
-    }
-
-    for (const type of types) {
-      const data = { ...pickXmlContent(type, ["id", "name", "icon"]), projectName } as Prisma.TypeUpsertArgs["create"];
-
-      await prisma.type.upsert({
-        where: { name: data.name },
-        update: { projectName },
-        create: data,
-      });
-    }
-
-    for (const status of statuses) {
-      const data = {
-        ...pickXmlContent(status, ["id", "name", "colour", "treat-as-closed"]),
-        projectName,
-      } as Prisma.StatusUpsertArgs["create"];
-
-      await prisma.status.upsert({
-        where: { name: data.name },
-        update: { projectName },
-        create: data,
-      });
-    }
-
-    for (const category of categories) {
-      const data = { ...pickXmlContent(category, ["id", "name"]), projectName } as Prisma.CategoryUpsertArgs["create"];
-
-      await prisma.category.upsert({
-        where: { name: data.name },
-        update: { projectName },
-        create: data,
-      });
-    }
-
-    for (const priority of priorities) {
-      const data = {
-        ...pickXmlContent(priority, ["id", "name", "colour"]),
-        projectName,
-      } as Prisma.PriorityUpsertArgs["create"];
-
-      await prisma.priority.upsert({
-        where: { name: data.name },
-        update: { projectName },
-        create: data,
-      });
-    }
-  } catch (error) {
-    spinner.fail("Couldn't save project details.");
-    process.exit(1);
-  }
-
-  return;
-}
-
-export async function upsertProjects(projects: string[]) {
-  for (const name of projects) {
-    await prisma.project.upsert({
-      where: { name },
-      update: {},
-      create: { name },
     });
+  },
+  get: promisify(db.get.bind(db)),
+  all: promisify(db.all.bind(db)),
+  exec: promisify(db.exec.bind(db)),
+};
+
+export function initDB() {
+  const initialMigrations = readFileSync(join(__dirname, "migration.sql"), "utf8");
+  return sqlite.exec(initialMigrations);
+}
+
+export async function insertProjects(projects: string[]) {
+  for (const project of projects) {
+    await sqlite.run(`INSERT INTO Project (name) VALUES (?)`, project);
   }
+
   return;
 }
 
-export async function findSavedQuery(name: string) {
-  return prisma.codebaseQuery.findUnique({ where: { name } });
-}
-
-export async function upsertUserQuery({ name, query }: { name: string; query: string }) {
-  return prisma.codebaseQuery.upsert({
-    where: {
-      name,
-    },
-    update: {
-      query,
-    },
-    create: {
-      username: process.env.username!,
-      name,
-      query,
-    },
-  });
-}
-
+export type ProjectDetailsType = {
+  users: UserType[];
+  statuses: StatusType[];
+  categories: CategoryType[];
+  priorities: PriorityType[];
+  types: TicketType[];
+};
 export async function listProjectDetails() {
-  const project = await prisma.project.findFirst({
-    where: { name: process.env.project! },
-    include: {
-      users: { orderBy: { user: { username: "desc" } } },
-      priorities: { orderBy: { name: "desc" } },
-      statuses: { orderBy: { name: "desc" } },
-      types: { orderBy: { name: "desc" } },
-      categories: { orderBy: { name: "desc" } },
-      tickets: true,
-    },
-  });
-  return project;
+  const [types, statuses, categories, priorities, users] = await Promise.all([
+    sqlite.all(`SELECT * FROM Type WHERE projectName = '${process.env.project}'`),
+    sqlite.all(`SELECT * FROM Status WHERE projectName = '${process.env.project}'`),
+    sqlite.all(`SELECT * FROM Category WHERE projectName = '${process.env.project}'`),
+    sqlite.all(`SELECT * FROM Priority WHERE projectName = '${process.env.project}'`),
+    sqlite.all(`
+  SELECT * FROM User
+  LEFT JOIN UsersOnProjects ON User.id = UsersOnProjects.userId
+  Where projectName = '${process.env.project}'`),
+  ]);
+
+  return { users, statuses, categories, priorities, types } as ProjectDetailsType;
 }
 
-export async function listAllQueries() {
-  return prisma.codebaseQuery.findMany({ where: { username: process.env.username } });
-}
+export async function saveProjectDetails(projectDetails: any[], project: string) {
+  const [types, statuses, categories, priorities, users] = projectDetails.map((detail) =>
+    detail.map((row: Record<string, any>) => Object.values(row))
+  );
 
-export async function listTicketStatuses() {
-  const statuses = await prisma.status.findMany({ select: { id: true, name: true } });
-  return statuses;
-}
+  let stmt = db.prepare(`INSERT INTO Type (id,name,icon,projectName) VALUES (?,?,?,?)`);
 
-export async function listTicketPriorities() {
-  const priorities = await prisma.priority.findMany({ select: { id: true, name: true } });
+  for (const type of types) {
+    stmt.run(type);
+  }
 
-  return priorities;
-}
+  stmt = db.prepare(`INSERT INTO Status (id,name,colour,treatAsClosed,projectName) VALUES (?,?,?,?,?)`);
 
-export async function listUsers() {
-  const users = await prisma.user.findMany({ select: { id: true, username: true } });
+  for (const status of statuses) {
+    stmt.run(status);
+  }
 
-  return users;
+  stmt = db.prepare(`INSERT INTO Category (id,name,projectName) VALUES (?,?,?)`);
+
+  for (const category of categories) {
+    stmt.run(category);
+  }
+
+  stmt = db.prepare(`INSERT INTO Priority (id,name,colour,projectName) VALUES (?,?,?,?)`);
+
+  for (const priority of priorities) {
+    stmt.run(priority);
+  }
+
+  stmt = db.prepare(`INSERT INTO User (id,username,firstname,lastname) VALUES (?,?,?,?)`);
+  const lookup_stmt = db.prepare(`INSERT INTO UsersOnProjects (projectName,userId) VALUES (?,?)`);
+
+  for (const user of users) {
+    const [userId] = user;
+    stmt.run(user);
+    lookup_stmt.run([project, userId]);
+  }
+
+  stmt.finalize();
 }
