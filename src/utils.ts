@@ -5,13 +5,13 @@ import dotenv from "dotenv";
 import ora from "ora";
 import chalk from "chalk";
 
-import { Auth, getTicketUpdates } from "./api";
-import { listProjectDetails, listUsers, prisma } from "./db";
-import { Ticket } from "@prisma/client";
+import { Auth, getTicketUpdates, TicketType, UserType } from "./api";
+import { listProjectDetails } from "./db";
 import { TICKET_CONTENT, TICKET_TABLE_HEADERS, TICKET_UPDATE_CONTENT, TTY_WIDTH } from "./constants";
 import { Transform } from "stream";
 import { Console } from "console";
 import { join } from "path";
+import { js2xml } from "xml-js";
 
 export const spinner = ora();
 
@@ -119,52 +119,48 @@ interface UpdateTicketPayload {
 }
 
 export async function generateUpdateTicketPayload(answers: Partial<UpdateTicketPayload>) {
-  const { comment, subject, privateUpdate, ...changes } = answers;
+  const { comment, subject, privateUpdate, assignee, type, status, priority, category } = answers;
 
-  const [status, priority, category, type, assignee] = await Promise.all([
-    prisma.status.findUnique({ where: { name: changes.status ?? "*" } }),
+  if (Object.entries(answers).filter(([_, value]) => value !== "*").length <= 0) {
+    spinner.fail("There is nothing to update in your payload.");
+    process.exit(1);
+  }
 
-    prisma.priority.findUnique({ where: { name: changes.priority ?? "*" } }),
+  const { users, categories, types, priorities, statuses } = await listProjectDetails();
 
-    prisma.category.findUnique({ where: { name: changes.category ?? "*" } }),
+  const payload = {
+    ["ticket-note"]: {
+      ...(comment && comment !== "*" ? { content: comment } : {}),
+      ...(privateUpdate ? { private: 1 } : {}),
+      changes: {
+        ...(assignee && assignee !== "*"
+          ? { ["assignee-id"]: users.find((user) => user.username === assignee)?.id }
+          : {}),
+        ...(type && type !== "*" ? { ["ticket-type-id"]: types.find((t) => t.name === type)?.id } : {}),
+        ...(status && status !== "*" ? { ["status-id"]: statuses.find((s) => s.name === status)?.id } : {}),
+        ...(priority && priority !== "*" ? { ["priority-id"]: priorities.find((p) => p.name === priority)?.id } : {}),
+        ...(category && category !== "*" ? { "category-id": categories.find((c) => c.name === category)?.id } : {}),
+        ...(subject && subject !== "*" ? { subject } : {}),
+      },
+    },
+  };
 
-    prisma.type.findUnique({ where: { name: changes.type ?? "*" } }),
-
-    prisma.user.findUnique({ where: { username: changes.assignee ?? "*" } }),
-  ]);
-
-  const payload = `<ticket-note>
-${comment && comment !== "*" ? `<content>${comment}</content>` : ""}
-<changes>
-${subject && subject !== "*" ? `<subject>${subject}</subject>` : ""}
-${assignee ? `<assignee-id>${assignee.id}</assignee-id>` : ""}
-${type ? `<ticket-type-id>${type.id}</ticket-type-id>` : ""}
-${status ? `<status-id>${status.id}</status-id>` : ""}
-${priority ? `<priority-id>${priority.id}</priority-id>` : ""}
-${category ? `<category-id>${category.id}</category-id>` : ""}
-</changes>
-${privateUpdate ? "<private>1</private>" : ""}
-</ticket-note>
-`.replace(/\n/g, "");
-
-  return payload;
+  return js2xml(payload, { compact: true, ignoreComment: true });
 }
 
 /* UI */
 
 export async function displayTicketTimeline(ticketId: string, limit: number) {
-  const users = await listUsers();
+  const { users } = await listProjectDetails();
 
   const timelineEvents: string[] = [];
   const timelineSeparator = chalk.redBright("\n┃\n┃\n");
-  for (const xmlUpdateNote of (await getTicketUpdates(ticketId)).slice(limit * -1)) {
-    const { content, updatedAt, userId, updates } = pickXmlContent(xmlUpdateNote, TICKET_UPDATE_CONTENT);
-
+  for (const { content, updatedAt, userId, updates } of (await getTicketUpdates(ticketId)).slice(limit * -1)) {
     const timestamp = "on " + new Date(updatedAt).toDateString() + " at " + updatedAt.replace("Z", "").split("T").pop();
 
-    const username = users.find((user) => user.id === userId)?.username;
+    const username = users.find((user: UserType) => user.id === userId)?.username;
 
-    const changedFields = Object.entries<[string, string]>(JSON.parse(updates));
+    const changedFields = Object.entries(updates);
 
     const changes: string[] = [];
 
@@ -192,7 +188,7 @@ export async function displayTicketTimeline(ticketId: string, limit: number) {
   return;
 }
 
-export async function displayTicketListTable(tickets: Ticket[], limit = 10) {
+export async function displayTicketListTable(tickets: TicketType[], limit = 10) {
   const { users, priorities, statuses, categories } = (await listProjectDetails())!;
 
   function formatXmlTicket(xmlTicket: Record<string, any>) {
@@ -208,7 +204,7 @@ export async function displayTicketListTable(tickets: Ticket[], limit = 10) {
       category: categories.find((category) => category.id === categoryId)?.name,
       priority: priorities.find((priority) => priority.id === priorityId)?.name,
       status: statuses.find((status) => status.id === statusId)?.name,
-      assignee: users.find((user) => user.userId === assigneeId)?.username,
+      assignee: users.find((user) => user.id === assigneeId)?.username,
       summary: summary.slice(0, TTY_WIDTH / 3).padEnd(TTY_WIDTH / 3, " "),
     };
   }
